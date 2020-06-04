@@ -43,7 +43,7 @@ class Venue(db.Model):
     country = db.Column(db.String(50))
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
+    #DONE
 class Artist(db.Model):
     __tablename__ = 'Artist'
 
@@ -52,12 +52,13 @@ class Artist(db.Model):
     city = db.Column(db.String(120))
     state = db.Column(db.String(120))
     phone = db.Column(db.String(120))
+    email = db.Column(db.String(120))
     genres = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
+    #DONE
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
 #----------------------------------------------------------------------------#
