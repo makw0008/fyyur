@@ -56,6 +56,7 @@ class Artist(db.Model):
     genres = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
+
     venues = db.relationship('Venue',secondary =show,
     backref =db.backref('artists',lazy =True)
     )
@@ -67,6 +68,7 @@ show = db.Table('show',
 db.Column('artist_id',db.Integer,db.ForeignKey('artist.id'),primary_key = True),
 db.Column('venue_id',db.Integer,db.ForeignKey('venue.id'),primary_key= True)
 ) 
+ #DONE
 #----------------------------------------------------------------------------#
 # Filters.
 #----------------------------------------------------------------------------#
@@ -118,7 +120,7 @@ def venues():
       "num_upcoming_shows": 0,
     }]
   }]
-  return render_template('pages/venues.html', areas=data);
+  return render_template('pages/venues.html', areas=data)
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
