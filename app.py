@@ -34,41 +34,51 @@ class Venue(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
+    genres =db.Column(db.String)
+    address = db.Column(db.String(120))
     city = db.Column(db.String(120))
     state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
     phone = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
+    website =db.Column(db.String(120))
     facebook_link = db.Column(db.String(120))
+    seeking_talent =db.Column(db.Boolean)
+    seeking_description =db.Column(db.String(120))  
+    image_link = db.Column(db.String(500))
+    
+
     country = db.Column(db.String(50))
     
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
     #DONE
+
+# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+
+show = db.Table('show',
+db.Column('artist_id',db.Integer,db.ForeignKey('Artist.id'),primary_key = True),
+db.Column('venue_id',db.Integer,db.ForeignKey('Venue.id'),primary_key= True)
+) 
+ #DONE
+
 class Artist(db.Model):
     __tablename__ = 'Artist'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
+    genres = db.Column(db.String(120))
     city = db.Column(db.String(120))
     state = db.Column(db.String(120))
     phone = db.Column(db.String(120))
-    email = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
+    website = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
-
-    venues = db.relationship('Venue',secondary =show,
+    seeking_venue = db.Column(db.Boolean)
+    seeking_description = db.Column(db.Stirng(500))
+    image_link = db.Column(db.String(500))
+    venues = db.relationship('Venue',secondary= show,
     backref =db.backref('artists',lazy =True)
-    )
+    ) 
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
     #DONE
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
-show = db.Table('show',
-db.Column('artist_id',db.Integer,db.ForeignKey('artist.id'),primary_key = True),
-db.Column('venue_id',db.Integer,db.ForeignKey('venue.id'),primary_key= True)
-) 
- #DONE
 #----------------------------------------------------------------------------#
 # Filters.
 #----------------------------------------------------------------------------#
@@ -86,7 +96,7 @@ app.jinja_env.filters['datetime'] = format_datetime
 #----------------------------------------------------------------------------#
 # Controllers.
 #----------------------------------------------------------------------------#
-
+db.create_all()
 @app.route('/')
 def index():
   return render_template('pages/home.html')
