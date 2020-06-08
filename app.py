@@ -44,19 +44,16 @@ class Venue(db.Model):
     seeking_talent =db.Column(db.Boolean)
     seeking_description =db.Column(db.String(120))  
     image_link = db.Column(db.String(500))
-    
-
-    country = db.Column(db.String(50))
-    
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
     #DONE
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
 show = db.Table('show',
-db.Column('artist_id',db.Integer,db.ForeignKey('Artist.id'),primary_key = True),
-db.Column('venue_id',db.Integer,db.ForeignKey('Venue.id'),primary_key= True)
-) 
+  db.Column('artist_id',db.Integer,db.ForeignKey('Artist.id'),primary_key = True),
+  db.Column('venue_id',db.Integer,db.ForeignKey('Venue.id'),primary_key= True),
+  db.Column('start_time',db.DateTime)
+)
  #DONE
 
 class Artist(db.Model):
