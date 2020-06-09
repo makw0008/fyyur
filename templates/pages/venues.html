@@ -3,19 +3,19 @@
 {% block content %}
 {% for area in areas %}
 
-<h3>	 {{area}} </h3>
+<h3>	 {{area.city}} {{area.venues.id}} </h3>
 	<ul class="items">
-		 <!-- {% for venue in area.genres[1:-1].split(',') %}  -->
+		{% for venue in area.venues['name'].split(',') %}
 		 
 		 <li>
 			<a href="/venues/{{ venue.id }}">
 				<i class="fas fa-music"></i>
 				<div class="item">
-					 
+					 {{venue}}
 				</div>
 			</a>
 		</li>
-		<!-- {% endfor %}  -->
+		{% endfor %}
 	</ul>
 {% endfor %}
 {% endblock %}
