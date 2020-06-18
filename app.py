@@ -13,6 +13,9 @@ from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
+from sqlalchemy import text
+import logging
+import sys
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -22,6 +25,10 @@ moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+sys.stdout.flush()
+# logger.info("Some text for console and log file")
+print('This is error output', file=sys.stderr)
+print('This is standard output', file=sys.stdout)
 # TODO: connect to a local postgresql database
 # DONE
 
@@ -53,6 +60,8 @@ show = db.Table('show',
   db.Column('venue_id',db.Integer,db.ForeignKey('Venue.id'),primary_key= True),
   db.Column('start_time',db.DateTime)
 )
+
+
  #DONE
 
 class Artist(db.Model):
@@ -72,11 +81,18 @@ class Artist(db.Model):
     venues = db.relationship('Venue',secondary= show,
     backref =db.backref('artists',lazy =True)
     ) 
+    
+
 
     def __repr__(self):
       return f'<Artist {self.id} {self.name} {self.genres} >'
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
     #DONE
+    # artist_obj = Artist()
+    # venue_obj = Venue()
+    # artist_obj.venues.append(venue_obj)
+    # db.session.add(artist_obj)
+    # db.session.commit()
 #----------------------------------------------------------------------------#
 # Filters.
 #----------------------------------------------------------------------------#
@@ -87,14 +103,14 @@ def format_datetime(value, format='medium'):
       format="EEEE MMMM, d, y 'at' h:mma"
   elif format == 'medium':
       format="EE MM, dd, y h:mma"
-  return babel.dates.format_datetime(date, format)
+  return babel.dates.format_datetime(date, format, locale='en')
 
 app.jinja_env.filters['datetime'] = format_datetime
 
 #----------------------------------------------------------------------------#
 # Controllers.
 #----------------------------------------------------------------------------#
-db.create_all()
+#db.create_all()
 @app.route('/')
 def index():
   return render_template('pages/home.html')
@@ -106,29 +122,64 @@ def index():
 @app.route('/venues')
 def venues():
   # TODO: replace with real venues data.
-  #       num_shows should be aggregated based on number of upcoming shows per venue.
+  #       num_shows should be aggregated based on number of upcoming shows per venue.\
+  ##DONE
+  ##ADD try and catch and change proper variable name
   areas = Venue.query.distinct('city','state').all()
+  print("venues")
   final_data=[]
-  data= {}
+  data= []
+  prev_city= ''
+  temp1= {}
+  temp={}
   
+
   for area in areas:
     venues =Venue.query.filter(Venue.city == area.city, Venue.state == area.state).all()
     #print(area.name, area.city )
+    temp["venues"] =[]
+    #print('getting new city  information')
+    for info in venues:   
+      #print("prev_ city = " , prev_city)
+     #print("info.city = ", info.city)
+      if(prev_city == info.city): 
+       # print("same city found")
+        if  prev_state != info.state:
+          temp["city"] = info.city
+          temp["state"] =info.state
+        temp1 = {}
+        temp1["id"] = info.id
+        temp1["name"] = info.name      
+        temp["venues"].append(temp1.copy())
+        #print('tempp[venue] = ', temp["venues"] )
+        prev_city = info.city
 
-    for info in venues:
-     # print(info.name)
-      data["city"] = info.city
-      data["state"] =info.state
-      data["venues"] ={}   
-      data["venues"]["id"] = info.id
-      data["venues"]["name"] = info.name
+      else:
+        #print("prv and current city are different")
+        temp["city"] = info.city
+        temp["state"] =info.state   
+        temp1 ={}
+        temp1["id"] = info.id
+        temp1["name"] = info.name
+        temp["venues"].append(temp1.copy())
+        prev_city = info.city
+        prev_state = info.state
+        
+        #print('aftering assingine prev_cituu' ,prev_city)   
+        #print(info.city , info.id)
+
       #print(data)
-
-    final_data.append(data.copy())   
+    
+    data.append(temp.copy())
+    if prev_city != info.city:
+      #print("its not same so reinstalize") 
+      temp["venues"] =[]  
+    
+  #print(data)
+  # for i in final_data:
+  #   print(i['venues']['id'])
 
   #print(data)
-  for i in final_data:
-    print(i['venues']['id'])
   # data=[{
   #   "city": "San Francisco",
   #   "state": "CA",
@@ -150,7 +201,7 @@ def venues():
   #     "num_upcoming_shows": 0,
   #   }]
   # }]
-  return render_template('pages/venues.html', areas = final_data)
+  return render_template('pages/venues.html', areas = data)
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
@@ -285,6 +336,9 @@ def delete_venue(venue_id):
 @app.route('/artists')
 def artists():
   # TODO: replace with real data returned from querying the database
+  # sql=text("Select * from Artist")
+  # artist =db.engine.execute(sql)
+  # data=artist.fetchall()
   data=Artist.query.all()
   return render_template('pages/artists.html', artists=data)
 
@@ -461,47 +515,74 @@ def create_artist_submission():
 #  ----------------------------------------------------------------
 
 @app.route('/shows')
+
 def shows():
   # displays list of shows at /shows
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
-  data=[{
-    "venue_id": 1,
-    "venue_name": "The Musical Hop",
-    "artist_id": 4,
-    "artist_name": "Guns N Petals",
-    "artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
-    "start_time": "2019-05-21T21:30:00.000Z"
-  }, {
-    "venue_id": 3,
-    "venue_name": "Park Square Live Music & Coffee",
-    "artist_id": 5,
-    "artist_name": "Matt Quevedo",
-    "artist_image_link": "https://images.unsplash.com/photo-1495223153807-b916f75de8c5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=334&q=80",
-    "start_time": "2019-06-15T23:00:00.000Z"
-  }, {
-    "venue_id": 3,
-    "venue_name": "Park Square Live Music & Coffee",
-    "artist_id": 6,
-    "artist_name": "The Wild Sax Band",
-    "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-    "start_time": "2035-04-01T20:00:00.000Z"
-  }, {
-    "venue_id": 3,
-    "venue_name": "Park Square Live Music & Coffee",
-    "artist_id": 6,
-    "artist_name": "The Wild Sax Band",
-    "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-    "start_time": "2035-04-08T20:00:00.000Z"
-  }, {
-    "venue_id": 3,
-    "venue_name": "Park Square Live Music & Coffee",
-    "artist_id": 6,
-    "artist_name": "The Wild Sax Band",
-    "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-    "start_time": "2035-04-15T20:00:00.000Z"
-  }]
-  return render_template('pages/shows.html', shows=data)
+  print('show is called', flush=True)
+  data1=[]
+  app.logger.warning('testing warning log')
+  shows =db.session.query(show).all()  
+  
+  for info in shows:
+    print(shows)
+    print(info.start_time)
+    venue = Venue.query.filter(Venue.id == info.venue_id).first_or_404()
+    #db.session.query(Venue).filter(venue.id == info.venue_id).all() 
+    #Venue.query.filter_by(id=info.venue_id)
+    print('iinfp reagardinge venue')
+   
+    artist = Artist.query.filter(Artist.id == info.artist_id).first_or_404()
+    print(artist)
+    data1.extend(
+      [{
+        "venue_id": venue.id,
+        "venue_name": venue.name,
+        "artist_id": artist.id,
+        "artist_name": artist.name,
+        "artist_image_link": artist.image_link,
+        "start_time": str(info.start_time)
+      }]
+    )
+  print(data1) 
+  # data=[{
+  #   "venue_id": 1,
+  #   "venue_name": "The Musical Hop",
+  #   "artist_id": 4,
+  #   "artist_name": "Guns N Petals",
+  #   "artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
+  #   "start_time": "2019-05-21T21:30:00.000Z"
+  # }, {
+  #   "venue_id": 3,
+  #   "venue_name": "Park Square Live Music & Coffee",
+  #   "artist_id": 5,
+  #   "artist_name": "Matt Quevedo",
+  #   "artist_image_link": "https://images.unsplash.com/photo-1495223153807-b916f75de8c5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=334&q=80",
+  #   "start_time": "2019-06-15T23:00:00.000Z"
+  # }, {
+  #   "venue_id": 3,
+  #   "venue_name": "Park Square Live Music & Coffee",
+  #   "artist_id": 6,
+  #   "artist_name": "The Wild Sax Band",
+  #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
+  #   "start_time": "2035-04-01T20:00:00.000Z"
+  # }, {
+  #   "venue_id": 3,
+  #   "venue_name": "Park Square Live Music & Coffee",
+  #   "artist_id": 6,
+  #   "artist_name": "The Wild Sax Band",
+  #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
+  #   "start_time": "2035-04-08T20:00:00.000Z"
+  # }, {
+  #   "venue_id": 3,
+  #   "venue_name": "Park Square Live Music & Coffee",
+  #   "artist_id": 6,
+  #   "artist_name": "The Wild Sax Band",
+  #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
+  #   "start_time": "2035-04-15T20:00:00.000Z"
+  # }]
+  return render_template('pages/shows.html', shows=data1)
 
 @app.route('/shows/create')
 def create_shows():
@@ -535,10 +616,9 @@ if not app.debug:
     file_handler.setFormatter(
         Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
     )
-    app.logger.setLevel(logging.INFO)
-    file_handler.setLevel(logging.INFO)
-    app.logger.addHandler(file_handler)
-    app.logger.info('errors')
+
+  
+
 
 #----------------------------------------------------------------------------#
 # Launch.
@@ -546,6 +626,8 @@ if not app.debug:
 
 # Default port:
 if __name__ == '__main__':
+    app.run(debug=True)
+
     app.run()
 
 # Or specify port manually:
