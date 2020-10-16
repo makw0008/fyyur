@@ -17,6 +17,7 @@ from sqlalchemy import *
 import logging
 import sys
 import os
+from datetime import datetime
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -51,6 +52,18 @@ def get_dict_list_from_result(result):
         i_dict = i._asdict()
         list_dict.append(i_dict)
     return list_dict
+
+
+
+def format_datetime(value, format='medium'):
+  #  date = dateutil.parser.parse(value)
+    date =value
+    if format == 'full':
+        format = "EEEE MMMM, d, y 'at' h:mma"
+    elif format == 'medium':
+        format = "EE MM, dd, y h:mma"
+    return babel.dates.format_datetime(date, format, locale='en')
+app.jinja_env.filters['datetime'] = format_datetime
 #----------------------------------------------------------------------------#
 # Models.
 #----------------------------------------------------------------------------#
@@ -121,16 +134,8 @@ class Artist(db.Model):
 #----------------------------------------------------------------------------#
 
 
-def format_datetime(value, format='medium'):
-    date = dateutil.parser.parse(value)
-    if format == 'full':
-        format = "EEEE MMMM, d, y 'at' h:mma"
-    elif format == 'medium':
-        format = "EE MM, dd, y h:mma"
-    return babel.dates.format_datetime(date, format, locale='en')
 
-
-app.jinja_env.filters['datetime'] = format_datetime
+# app.jinja_env.filters['datetime'] = format_datetime
 
 #----------------------------------------------------------------------------#
 # Controllers.
@@ -184,17 +189,21 @@ def search_venues():
     return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 
 
-@app.route('/venues/<int:venue_id>')
-def show_venue(venue_id):
+@app.route('/venues/<int:venueid>')
+def show_venue(venueid):
     # shows the venue page with the given venue_id
     # TODO: replace with real venue data from the venues table, using venue_id
-    venue_id = venue_id
-    data1 = Venue.query.filter_by(id=venue_id).first()
-   # data1=Venue.query.get(venue_id)
-    data2 = []
-    data3 = []
-    data = list(filter(lambda d: d['id'] ==
-                       venue_id, [data1, data2, data3]))[0]
+    venue_id=venueid
+    data =db.session.query(Venue).filter(Venue.id == venue_id).first_or_404()
+       
+    data.past_shows = db.session.query(Artist.id.label("artist_id"),Artist.name.label("artist_name"),Artist.image_link.label("artist_image_link"),show).filter(show.c.venue_id == venue_id).filter(Artist.id == show.c.artist_id).filter(show.c.start_time < datetime.now()).all()
+    data.past_shows_count = len(data.past_shows) 
+    
+    data.upcoming_shows = db.session.query(Artist.id.label("artist_id"),Artist.name.label("artist_name"),Artist.image_link.label("artist_image_link"),show).filter(show.c.venue_id == venue_id).filter(Artist.id == show.c.artist_id).filter(show.c.start_time > datetime.now() ).all()
+    data.upcoming_shows_count = len(data.upcoming_shows)
+    #data = db.session.query(Artist).join(show).join(Venue).filter(Artist.id == show.c.artist_id).filter(Venue.id == show.c.venue_id).all()
+    #data3 = []
+   
     return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
@@ -264,8 +273,13 @@ def show_artist(artist_id):
     artist_id = artist_id
     # shows the venue page with the given venue_id
     # TODO: replace with real venue data from the venues table, using venue_id
-    data = Artist.query.filter_by(id=artist_id).first()
-
+    data = Artist.query.filter(Artist.id == artist_id).first_or_404()
+    data.past_shows = db.session.query(Venue.id.label("venue_id"),Venue.name.label("venue_name"),Venue.image_link.label("venue_image_link"),show).filter( show.c.artist_id == artist_id).filter(show.c.venue_id == Venue.id).filter(show.c.start_time < datetime.now()).all()
+    data.past_shows_count = len(data.past_shows) 
+    
+    data.upcoming_shows = db.session.query(Venue.id.label("venue_id"),Venue.name.label("venue_name"),Venue.image_link.label("venue_image_link"),show).filter(show.c.artist_id== artist_id).filter(show.c.venue_id == Venue.id).filter(show.c.start_time > datetime.now() ).all()
+    data.upcoming_shows_count = len(data.upcoming_shows)
+    
     return render_template('pages/show_artist.html', artist=data)
 
 #  Update
@@ -358,70 +372,34 @@ def shows():
     # displays list of shows at /shows
     # TODO: replace with real venues data.
     #       num_shows should be aggregated based on number of upcoming shows per venue.
-    print('show is called', flush=True)
-    data1 = []
-    app.logger.warning('testing warning log')
-    shows = db.session.query(show).all()
+    data1=[]
+    data = db.session.query(Artist.id.label("artist_id"),Artist.name.label("artist_name"),Artist.image_link.label("artist_image_link"),Venue.id.label("venue_id"),Venue.name.label("venue_name"),show).filter(Venue.id == show.c.venue_id).filter(Artist.id ==show.c.artist_id).all()
+    
+    
+    
+    # for info in shows:
+    #     print(shows)
+    #     print(info.start_time)
+    #     venue = Venue.query.filter(Venue.id == info.venue_id).first_or_404()
+    #     # db.session.query(Venue).filter(venue.id == info.venue_id).all()
+    #     # Venue.query.filter_by(id=info.venue_id)
+        
 
-    for info in shows:
-        print(shows)
-        print(info.start_time)
-        venue = Venue.query.filter(Venue.id == info.venue_id).first_or_404()
-        #db.session.query(Venue).filter(venue.id == info.venue_id).all()
-        # Venue.query.filter_by(id=info.venue_id)
-        print('iinfp reagardinge venue')
-
-        artist = Artist.query.filter(
-            Artist.id == info.artist_id).first_or_404()
-        print(artist)
-        data1.extend(
-            [{
-                "venue_id": venue.id,
-                "venue_name": venue.name,
-                "artist_id": artist.id,
-                "artist_name": artist.name,
-                "artist_image_link": artist.image_link,
-                "start_time": str(info.start_time)
-            }]
-        )
-    print(data1)
-    # data=[{
-    #   "venue_id": 1,
-    #   "venue_name": "The Musical Hop",
-    #   "artist_id": 4,
-    #   "artist_name": "Guns N Petals",
-    #   "artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
-    #   "start_time": "2019-05-21T21:30:00.000Z"
-    # }, {
-    #   "venue_id": 3,
-    #   "venue_name": "Park Square Live Music & Coffee",
-    #   "artist_id": 5,
-    #   "artist_name": "Matt Quevedo",
-    #   "artist_image_link": "https://images.unsplash.com/photo-1495223153807-b916f75de8c5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=334&q=80",
-    #   "start_time": "2019-06-15T23:00:00.000Z"
-    # }, {
-    #   "venue_id": 3,
-    #   "venue_name": "Park Square Live Music & Coffee",
-    #   "artist_id": 6,
-    #   "artist_name": "The Wild Sax Band",
-    #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-    #   "start_time": "2035-04-01T20:00:00.000Z"
-    # }, {
-    #   "venue_id": 3,
-    #   "venue_name": "Park Square Live Music & Coffee",
-    #   "artist_id": 6,
-    #   "artist_name": "The Wild Sax Band",
-    #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-    #   "start_time": "2035-04-08T20:00:00.000Z"
-    # }, {
-    #   "venue_id": 3,
-    #   "venue_name": "Park Square Live Music & Coffee",
-    #   "artist_id": 6,
-    #   "artist_name": "The Wild Sax Band",
-    #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-    #   "start_time": "2035-04-15T20:00:00.000Z"
-    # }]
-    return render_template('pages/shows.html', shows=data1)
+    #     artist = Artist.query.filter(
+    #         Artist.id == info.artist_id).first_or_404()
+    #     print(artist)
+    #     data1.extend(
+    #         [{
+    #             "venue_id": venue.id,
+    #             "venue_name": venue.name,
+    #             "artist_id": artist.id,
+    #             "artist_name": artist.name,
+    #             "artist_image_link": artist.image_link,
+    #             "start_time": info.start_time
+    #         }]
+    #     )
+   
+    return render_template('pages/shows.html', shows=data)
 
 
 @app.route('/shows/create')
