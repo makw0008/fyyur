@@ -10,7 +10,7 @@ from flask_moment import Moment
 from flask_sqlalchemy import *
 import logging
 from logging import Formatter, FileHandler
-from flask_wtf import Form
+from flask_wtf import FlaskForm
 from forms import *
 from flask_migrate import Migrate
 from sqlalchemy import *
@@ -18,6 +18,7 @@ import logging
 import sys
 import os
 from datetime import datetime
+
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -230,19 +231,26 @@ def create_venue_submission():
         state = request.form['state']
         phone = request.form['phone']
         address = request.form['address']
-        genres = request.form['genres']
-        facebook_link = ['facebook_link']
+        genres = request.form['genres'] 
+        facebook_link = request.form['facebook_link']
+        website = request.form['website']
+        image_link=request.form['image_link']
+        seeking_description = request.form['seeking_description']
+        seeking_talent = request.form['seeking_talent']
         
-        data = Venue(name=name,city=city,state=state,phone=phone,address=address,genres=genres,facebook_link=facebook_link)
+        data = Venue(name=name,city=city,state=state,phone=phone,address=address,genres=genres,facebook_link=facebook_link,website=website,image_link=image_link,seeking_descriptio =seeking_description,seeking_talent=seeking_talent)
         db.session.add(data) 
         db.session.commit()
-    except: 
+        flash('Venue ' + request.form['name'] + ' was successfully listed!')
+    except Exception as Error:
+         
         db.session.rollback()
+        return Error
     finally:
         db.session.close()    
         
     # on successful db insert, flash success
-    flash('Venue ' + request.form['name'] + ' was successfully listed!')
+ 
     # TODO: on unsuccessful db insert, flash an error instead.
     # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
     # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
@@ -378,7 +386,23 @@ def create_artist_submission():
     # called upon submitting the new artist listing form
     # TODO: insert form data as a new Venue record in the db, instead
     # TODO: modify data to be the data object returned from db insertion
-
+    try:
+        name = request.form["name"]
+        genres = request.form["genres"]
+        city = request.form["city"]
+        state = request.form["state"]
+        phone = request.form["phone"]
+        
+        facebook_link = request.form["facebook_link"]
+       
+        data = Artist(name=name,city=city,state=state,phone=phone,genres=genres,facebook_link=facebook_link)
+        db.session.add(data) 
+        db.session.commit()
+    except: 
+        db.session.rollback()
+    finally:
+        db.session.close()    
+     
     # on successful db insert, flash success
     flash('Artist ' + request.form['name'] + ' was successfully listed!')
     # TODO: on unsuccessful db insert, flash an error instead.
