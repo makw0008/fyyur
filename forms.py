@@ -121,8 +121,8 @@ class   VenueForm(FlaskForm):
     website = StringField(
         'website',validators=[URL()]
     )
-    seeking_talent= BooleanField(
-        'seeking_talent',validators=[URL()]
+    seeking_talent = BooleanField(
+        'seeking_talent',validators=[DataRequired()]
     )
     seeking_description = StringField(
         'seeking_description'
