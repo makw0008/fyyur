@@ -1,5 +1,3 @@
-
-
 # ----------------------------------------------------------------------------#
 # Imports
 # ----------------------------------------------------------------------------#
@@ -79,7 +77,7 @@ app.jinja_env.filters['datetime'] = format_datetime
 
 class Venue(db.Model):
     __tablename__ = 'Venue'
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(120))
     genres = db.Column(db.String(120))
     address = db.Column(db.String(120))
@@ -103,7 +101,7 @@ class Venue(db.Model):
 
 
 show = db.Table('show',
-                 db.Column('show_id', db.Integer, primary_key=True, autoincrement=True),
+                db.Column('show_id', db.Integer, primary_key=True, autoincrement=True),
                 db.Column('artist_id', db.Integer, db.ForeignKey(
                     'Artist.id')),
                 db.Column('venue_id', db.Integer, db.ForeignKey(
@@ -118,7 +116,7 @@ show = db.Table('show',
 class Artist(db.Model):
     __tablename__ = 'Artist'
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String)
     genres = db.Column(db.String(120))
     city = db.Column(db.String(120))
@@ -137,11 +135,6 @@ class Artist(db.Model):
         return f'<Artist {self.id} {self.name} {self.genres} >'
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
     # DONE
-    # artist_obj = Artist()
-    # venue_obj = Venue()
-    # artist_obj.venues.append(venue_obj)
-    # db.session.add(artist_obj)
-    # db.session.commit()
 
 
 # ----------------------------------------------------------------------------#
@@ -192,14 +185,15 @@ def search_venues():
     # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for Hop should return "The Musical Hop".
     # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
+
+    search = request.form.get('search_term', '')
+    result = db.session.query(Venue).filter(Venue.name.ilike(f'%{search}%')).all()
+
     response = {
-        "count": 1,
-        "data": [{
-            "id": 2,
-            "name": "The Dueling Pianos Bar",
-            "num_upcoming_shows": 0,
-        }]
+        "count": len(result),
+        "data": result
     }
+
     return render_template('pages/search_venues.html', results=response,
                            search_term=request.form.get('search_term', ''))
 
@@ -312,14 +306,15 @@ def search_artists():
     # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
     # search for "band" should return "The Wild Sax Band".
+
+    search = request.form.get('search_term', '')
+    result = db.session.query(Artist).filter(Artist.name.ilike(f'%{search}%')).all()
+
     response = {
-        "count": 1,
-        "data": [{
-            "id": 4,
-            "name": "Guns N Petals",
-            "num_upcoming_shows": 0,
-        }]
+        "count": len(result),
+        "data": result
     }
+
     return render_template('pages/search_artists.html', results=response,
                            search_term=request.form.get('search_term', ''))
 
