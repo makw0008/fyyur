@@ -31,11 +31,6 @@ sys.stdout.flush()
 # DONE
 
 
-def object_as_dict(obj):
-    return {c.key: getattr(obj, c.key)
-            for c in inspect(obj).mapper.column_attrs}
-
-
 def format_datetime(value, format='medium'):
     #  date = dateutil.parser.parse(value)
     date = value
@@ -55,7 +50,7 @@ app.jinja_env.filters['datetime'] = format_datetime
 
 
 class Venue(db.Model):
-    __tablename__ = 'Venue'
+    __tablename__ = 'Venues'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(120))
     genres = db.Column(db.String(120))
@@ -68,6 +63,7 @@ class Venue(db.Model):
     seeking_talent = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
+    shows = db.relationship('Show', backref="venue", lazy=True)
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
     # DONE
@@ -80,17 +76,17 @@ class Venue(db.Model):
 # DONE
 
 class Show(db.Model):
-    __tablename__ = "Show"
+    __tablename__ = "Shows"
     show_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    artist_id = db.Column(db.Integer, db.ForeignKey("Artist.id"), nullable=False)
-    venue_id = db.Column(db.Integer, db.ForeignKey("Venue.id", ondelete="CASCADE"), nullable=False)
+    artist_id = db.Column(db.Integer, db.ForeignKey("Artists.id"), nullable=False)
+    venue_id = db.Column(db.Integer, db.ForeignKey("Venues.id", ondelete="CASCADE"), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
 
 
 # DONE
 
 class Artist(db.Model):
-    __tablename__ = 'Artist'
+    __tablename__ = 'Artists'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String)
@@ -103,9 +99,7 @@ class Artist(db.Model):
     seeking_venue = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(500))
     image_link = db.Column(db.String(500))
-    venues = db.relationship('Venue', secondary='Show',
-                             backref=db.backref('artists', lazy=True)
-                             )
+    shows = db.relationship('Show', backref="artist", lazy=True)
 
     def __repr__(self):
         return f'<Artist {self.id} {self.name} {self.genres} >'
@@ -140,18 +134,25 @@ def venues():
     #       num_shows should be aggregated based on number of upcoming shows per venue.\
     # DONE
     # ADD try and catch and change proper variable name
-    all_venue = db.session.query(func.count(
-        Venue.id), Venue.city, Venue.state).group_by(Venue.city, Venue.state)
+    allVenues = Venue.query.with_entities(func.count(Venue.id), Venue.city, Venue.state).group_by(Venue.city,
+                                                                                                  Venue.state).all()
     data = []
-    for i in all_venue:
-        data.append(i._asdict())
 
-    for venue in data:
-        venue["area"] = (object_as_dict(ven) for ven in Venue.query.filter_by(
-            city=venue['city']).filter_by(state=venue['state']).all())
-
-    #     data =object_as_dict(Venue.query.filter_by(city=venue[1]).filter_by(state=venue[2]).all())
-    #     venue_list.append(data)
+    for area in allVenues:
+        area_venues = Venue.query.filter_by(state=area.state).filter_by(city=area.city).all()
+        venue_data = []
+        for venue in area_venues:
+            venue_data.append({
+                "id": venue.id,
+                "name": venue.name,
+                "num_upcoming_shows": len(
+                    db.session.query(Show).filter(Show.venue_id == venue.id).filter(Show.start_time > datetime.now()).all())
+            })
+        data.append({
+            "city": area.city,
+            "state": area.state,
+            "venues": venue_data
+        })
 
     return render_template('pages/venues.html', areas=data)
 
@@ -182,22 +183,35 @@ def show_venue(venue_id):
     # DONE
 
     data = db.session.query(Venue).filter(Venue.id == venue_id).first_or_404()
+    past_shows_data = db.session.query(Show).join(Venue).join(Artist).filter(Show.venue_id == venue_id).filter(
+        Show.start_time < datetime.now()).all()
+    upcoming_shows_data = db.session.query(Show).join(Venue).join(Artist).filter(venue_id == Show.venue_id and Show.artist_id == Artist.id ).filter(
+        Show.start_time > datetime.now()).all()
 
-    data.past_shows = db.session.query(Artist.id.label("artist_id"), Artist.name.label("artist_name"),
-                                       Artist.image_link.label(
-                                           "artist_image_link"), Show.start_time).filter(
-        Show.venue_id == venue_id).filter(
-        Artist.id == Show.artist_id).filter(Show.start_time < datetime.now()).all()
+    upcoming_shows = []
+    past_shows = []
+
+    for i in upcoming_shows_data:
+        upcoming_shows.append({
+            "artist_id": i.artist_id,
+            "artist_name": i.artist.name,
+            "artist_image_link": i.artist.image_link,
+            "start_time": i.start_time
+        })
+
+    for i in past_shows_data:
+        past_shows.append({
+                "artist_id": i.artist_id,
+                "artist_name": i.artist.name,
+                "artist_image_link": i.artist.image_link,
+                "start_time": i.start_time
+
+            })
+
+    data.past_shows = past_shows
+    data.upcoming_shows = upcoming_shows
     data.past_shows_count = len(data.past_shows)
-
-    data.upcoming_shows = db.session.query(Artist.id.label("artist_id"), Artist.name.label("artist_name"),
-                                           Artist.image_link.label(
-                                               "artist_image_link"), Show.start_time).filter(
-        Show.venue_id == venue_id).filter(
-        Artist.id == Show.artist_id).filter(Show.start_time > datetime.now()).all()
     data.upcoming_shows_count = len(data.upcoming_shows)
-    # data = db.session.query(Artist).join(show).join(Venue).filter(Artist.id == show.c.artist_id).filter(Venue.id == show.c.venue_id).all()
-    # data3 = []
 
     return render_template('pages/show_venue.html', venue=data)
 
@@ -239,7 +253,7 @@ def create_venue_submission():
         db.session.add(data)
         db.session.commit()
 
-    except Exception as Error:
+    except:
         Error = True
         db.session.rollback()
 
@@ -357,9 +371,6 @@ def edit_artist(artist_id):
         form.facebook_link.data = data.facebook_link
         form.image_link.data = data.image_link
 
-
-
-
     return render_template('forms/edit_artist.html', form=form, artist=data)
 
 
@@ -447,7 +458,7 @@ def edit_venue_submission(venue_id):
     if not Error:
         flash(f'Venue updated successfully')
     return redirect(url_for('show_venue', venue_id=venue_id))
-    #return render_template('pages/show_venue.html', venue=venue)
+    # return render_template('pages/show_venue.html', venue=venue)
 
 
 #  Create Artist
